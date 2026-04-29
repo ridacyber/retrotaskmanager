@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -26,14 +26,10 @@ const TaskDetail: React.FC = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
-  useEffect(() => {
-  fetchTask();
-}, [fetchTask]);
-
-  const fetchTask = async (taskId: string) => {
+  const fetchTask = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/tasks/${taskId}`, {
+      const response = await axios.get(`${API_URL}/tasks/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTask(response.data);
@@ -43,7 +39,11 @@ const TaskDetail: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [API_URL, id]);
+
+  useEffect(() => {
+    fetchTask();
+  }, [fetchTask]);
 
   const handleUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +94,6 @@ const TaskDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
       <header className="border-b-4 border-retro-dark bg-retro-brown p-4">
         <div className="container mx-auto flex justify-between items-center">
           <Link to="/" className="text-3xl font-bold text-retro-cream terminal-text">
@@ -112,7 +111,6 @@ const TaskDetail: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="retro-card">
@@ -143,18 +141,15 @@ const TaskDetail: React.FC = () => {
             )}
 
             {!isEditing ? (
-              // View Mode
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-bold text-retro-brown mb-1">TITLE:</h3>
                   <p className="text-lg text-retro-dark">{task.title}</p>
                 </div>
-
                 <div>
                   <h3 className="text-sm font-bold text-retro-brown mb-1">DESCRIPTION:</h3>
                   <p className="text-retro-dark">{task.description}</p>
                 </div>
-
                 <div>
                   <h3 className="text-sm font-bold text-retro-brown mb-1">STATUS:</h3>
                   <span className={`px-3 py-1 border-2 border-retro-dark font-bold ${
@@ -165,7 +160,6 @@ const TaskDetail: React.FC = () => {
                     {task.status.replace('_', ' ').toUpperCase()}
                   </span>
                 </div>
-
                 {task.due_date && (
                   <div>
                     <h3 className="text-sm font-bold text-retro-brown mb-1">DUE DATE:</h3>
@@ -174,14 +168,12 @@ const TaskDetail: React.FC = () => {
                     </p>
                   </div>
                 )}
-
                 <div>
                   <h3 className="text-sm font-bold text-retro-brown mb-1">CREATED:</h3>
                   <p className="text-retro-dark">
                     {new Date(task.created_at).toLocaleDateString()}
                   </p>
                 </div>
-
                 <div>
                   <h3 className="text-sm font-bold text-retro-brown mb-1">LAST UPDATED:</h3>
                   <p className="text-retro-dark">
@@ -190,12 +182,9 @@ const TaskDetail: React.FC = () => {
                 </div>
               </div>
             ) : (
-              // Edit Mode
               <form onSubmit={handleUpdateTask} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold mb-2 text-retro-brown">
-                    TITLE:
-                  </label>
+                  <label className="block text-sm font-bold mb-2 text-retro-brown">TITLE:</label>
                   <input
                     type="text"
                     value={editedTask?.title || ''}
@@ -204,11 +193,8 @@ const TaskDetail: React.FC = () => {
                     required
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-bold mb-2 text-retro-brown">
-                    DESCRIPTION:
-                  </label>
+                  <label className="block text-sm font-bold mb-2 text-retro-brown">DESCRIPTION:</label>
                   <textarea
                     value={editedTask?.description || ''}
                     onChange={(e) => setEditedTask(prev => prev ? {...prev, description: e.target.value} : null)}
@@ -216,11 +202,8 @@ const TaskDetail: React.FC = () => {
                     required
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-bold mb-2 text-retro-brown">
-                    STATUS:
-                  </label>
+                  <label className="block text-sm font-bold mb-2 text-retro-brown">STATUS:</label>
                   <select
                     value={editedTask?.status || 'todo'}
                     onChange={(e) => setEditedTask(prev => prev ? {...prev, status: e.target.value as any} : null)}
@@ -231,11 +214,8 @@ const TaskDetail: React.FC = () => {
                     <option value="done">Done</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-bold mb-2 text-retro-brown">
-                    DUE DATE:
-                  </label>
+                  <label className="block text-sm font-bold mb-2 text-retro-brown">DUE DATE:</label>
                   <input
                     type="date"
                     value={editedTask?.due_date?.split('T')[0] || ''}
@@ -243,17 +223,11 @@ const TaskDetail: React.FC = () => {
                     className="retro-input w-full"
                   />
                 </div>
-
                 <div className="flex space-x-2">
-                  <button type="submit" className="retro-button">
-                    SAVE CHANGES
-                  </button>
+                  <button type="submit" className="retro-button">SAVE CHANGES</button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setEditedTask(task);
-                    }}
+                    onClick={() => { setIsEditing(false); setEditedTask(task); }}
                     className="retro-button bg-terminal-red text-retro-cream border-retro-dark"
                   >
                     CANCEL
@@ -265,12 +239,9 @@ const TaskDetail: React.FC = () => {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t-4 border-retro-dark bg-retro-brown p-4 text-retro-cream">
         <div className="container mx-auto text-center">
-          <p className="terminal-text text-sm">
-            [RETROTASK] © 2024
-          </p>
+          <p className="terminal-text text-sm">[RETROTASK] © 2024</p>
         </div>
       </footer>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -30,11 +30,7 @@ const Dashboard: React.FC = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
-  useEffect(() => {
-  fetchTasks();
-}, [fetchTasks]);
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_URL}/tasks`, {
@@ -46,7 +42,11 @@ const Dashboard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [API_URL]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,7 +120,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col crt-screen bg-arcade-black">
-      {/* Header */}
       <header className="border-b-4 border-arcade-green bg-arcade-darker p-4 pixel-border">
         <div className="container mx-auto flex justify-between items-center">
           <Link to="/" className="text-2xl font-bold text-arcade-green arcade-title">
@@ -136,7 +135,6 @@ const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-grow container mx-auto px-4 py-8 crt-gradient">
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-4 text-arcade-green arcade-title animate-glow">
@@ -150,7 +148,6 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
 
-        {/* Player Stats */}
         <div className="mb-8">
           <div className="inline-block pixel-card">
             <div className="flex space-x-8">
@@ -176,7 +173,6 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Add Task Form */}
         {showAddForm && (
           <div className="pixel-card mb-8">
             <h3 className="text-xl font-bold mb-4 text-arcade-green arcade-title">[NEW QUEST]</h3>
@@ -238,9 +234,7 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Task Columns */}
         <div className="grid md:grid-cols-3 gap-6">
-          {/* To Do */}
           <div>
             <h2 className="text-xl font-bold mb-4 text-arcade-green arcade-subtitle">[NEW QUESTS]</h2>
             {tasksByStatus.todo.length === 0 ? (
@@ -249,8 +243,6 @@ const Dashboard: React.FC = () => {
               tasksByStatus.todo.map(task => <TaskCard key={task.id} task={task} />)
             )}
           </div>
-
-          {/* In Progress */}
           <div>
             <h2 className="text-xl font-bold mb-4 text-arcade-amber arcade-subtitle">[ACTIVE]</h2>
             {tasksByStatus.in_progress.length === 0 ? (
@@ -259,8 +251,6 @@ const Dashboard: React.FC = () => {
               tasksByStatus.in_progress.map(task => <TaskCard key={task.id} task={task} />)
             )}
           </div>
-
-          {/* Done */}
           <div>
             <h2 className="text-xl font-bold mb-4 text-arcade-green arcade-subtitle">[COMPLETED]</h2>
             {tasksByStatus.done.length === 0 ? (
@@ -272,7 +262,6 @@ const Dashboard: React.FC = () => {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t-4 border-arcade-green bg-arcade-darker p-4 text-arcade-green pixel-border">
         <div className="container mx-auto text-center">
           <div className="flex justify-center items-center space-x-4">
