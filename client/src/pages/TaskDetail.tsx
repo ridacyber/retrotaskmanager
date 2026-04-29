@@ -27,14 +27,8 @@ const TaskDetail: React.FC = () => {
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    if (id) {
-      fetchTask(id);
-    }
-  }, [user, id, navigate]);
+  fetchTask();
+}, [fetchTask]);
 
   const fetchTask = async (taskId: string) => {
     try {
