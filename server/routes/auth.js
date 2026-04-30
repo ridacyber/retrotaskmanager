@@ -7,14 +7,16 @@ const { sendWelcomeEmail } = require('../services/emailService');
 const router = express.Router();
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT) || 5432,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
   ssl: { rejectUnauthorized: false }
 });
 
-// Register a new user
 router.post('/signup', async (req, res) => {
   const { name, email, password } = req.body;
-
   try {
     console.log('Signup attempt:', { name, email });
 
@@ -49,11 +51,7 @@ router.post('/signup', async (req, res) => {
 
     res.json({
       token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email
-      }
+      user: { id: user.id, name: user.name, email: user.email }
     });
   } catch (err) {
     console.error(err);
@@ -61,10 +59,8 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// Login user
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-
   try {
     console.log('Login attempt:', { email });
 
@@ -92,11 +88,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email
-      }
+      user: { id: user.id, name: user.name, email: user.email }
     });
   } catch (err) {
     console.error(err);
@@ -104,7 +96,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Verify token and get user info
 router.get('/verify', auth, async (req, res) => {
   try {
     const result = await pool.query(
