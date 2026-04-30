@@ -2,11 +2,18 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
+const { Pool } = require('pg');
 const { sendWelcomeEmail } = require('../services/emailService');
 const router = express.Router();
 
-// Mock database to store users for demo purposes
-const mockUsers = new Map();
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  ssl: { rejectUnauthorized: false }
+});
 
 // Register a new user
 router.post('/signup', async (req, res) => {
@@ -14,25 +21,28 @@ router.post('/signup', async (req, res) => {
 
   try {
     console.log('Signup attempt:', { name, email });
-    
-    // Check if user already exists in our mock database
-    if (mockUsers.has(email)) {
+
+    // Check if user already exists
+    const existingUser = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
       return res.status(400).json({ message: 'Oops! That account already exists' });
     }
-    
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user and store in mock database
-    const user = {
-      id: Math.floor(Math.random() * 1000) + 1,
-      name: name,
-      email: email,
-      password: hashedPassword
-    };
-    
-    mockUsers.set(email, user);
+    // Insert user into database
+    const result = await pool.query(
+      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+      [name, email, hashedPassword]
+    );
+
+    const user = result.rows[0];
 
     // Create JWT token
     const token = jwt.sign(
@@ -41,7 +51,7 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Send welcome email (async, don't wait for it)
+    // Send welcome email
     sendWelcomeEmail(user.email, user.name).catch(err => {
       console.error('Failed to send welcome email:', err);
     });
@@ -66,23 +76,28 @@ router.post('/login', async (req, res) => {
 
   try {
     console.log('Login attempt:', { email });
-    
-    // Check if user exists in mock database
-    if (!mockUsers.has(email)) {
+
+    // Find user in database
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
-    
-    const storedUser = mockUsers.get(email);
-    
+
+    const user = result.rows[0];
+
     // Check password
-    const isMatch = await bcrypt.compare(password, storedUser.password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // Create JWT token
     const token = jwt.sign(
-      { user: { id: storedUser.id } },
+      { user: { id: user.id } },
       process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '24h' }
     );
@@ -90,9 +105,9 @@ router.post('/login', async (req, res) => {
     res.json({
       token,
       user: {
-        id: storedUser.id,
-        name: storedUser.name,
-        email: storedUser.email
+        id: user.id,
+        name: user.name,
+        email: user.email
       }
     });
   } catch (err) {
@@ -104,24 +119,16 @@ router.post('/login', async (req, res) => {
 // Verify token and get user info
 router.get('/verify', auth, async (req, res) => {
   try {
-    // Find user in mock database
-    let foundUser = null;
-    for (const [email, user] of mockUsers.entries()) {
-      if (user.id === req.user.id) {
-        foundUser = {
-          id: user.id,
-          name: user.name,
-          email: user.email
-        };
-        break;
-      }
-    }
+    const result = await pool.query(
+      'SELECT id, name, email FROM users WHERE id = $1',
+      [req.user.id]
+    );
 
-    if (!foundUser) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ user: foundUser });
+    res.json({ user: result.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
