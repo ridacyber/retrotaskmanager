@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -99,10 +100,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-  };
+  setUser(null);
+  setToken(null);
+  localStorage.removeItem('token');
+  window.location.href = '/';
+};
 
   const value: AuthContextType = {
     user,
