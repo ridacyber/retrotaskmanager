@@ -15,6 +15,14 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+console.log('DB Config:', {
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  hasPassword: !!process.env.DB_PASSWORD
+});
+
 router.post('/signup', async (req, res) => {
   const { name, email, password } = req.body;
   try {
