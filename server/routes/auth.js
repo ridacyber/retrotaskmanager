@@ -7,11 +7,7 @@ const { sendWelcomeEmail } = require('../services/emailService');
 const router = express.Router();
 
 const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
@@ -22,7 +18,6 @@ router.post('/signup', async (req, res) => {
   try {
     console.log('Signup attempt:', { name, email });
 
-    // Check if user already exists
     const existingUser = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -32,11 +27,9 @@ router.post('/signup', async (req, res) => {
       return res.status(400).json({ message: 'Oops! That account already exists' });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insert user into database
     const result = await pool.query(
       'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
       [name, email, hashedPassword]
@@ -44,14 +37,12 @@ router.post('/signup', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Create JWT token
     const token = jwt.sign(
       { user: { id: user.id } },
       process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '24h' }
     );
 
-    // Send welcome email
     sendWelcomeEmail(user.email, user.name).catch(err => {
       console.error('Failed to send welcome email:', err);
     });
@@ -77,7 +68,6 @@ router.post('/login', async (req, res) => {
   try {
     console.log('Login attempt:', { email });
 
-    // Find user in database
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -89,13 +79,11 @@ router.post('/login', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Create JWT token
     const token = jwt.sign(
       { user: { id: user.id } },
       process.env.JWT_SECRET || 'fallback_secret',
